@@ -1,0 +1,91 @@
+package com.iiht.training.blogs.controller;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+import com.iiht.training.blogs.dto.BlogDto;
+import com.iiht.training.blogs.dto.CommentDto;
+import com.iiht.training.blogs.exceptions.BlogNotFoundException;
+import com.iiht.training.blogs.exceptions.ExceptionResponse;
+import com.iiht.training.blogs.exceptions.InvalidDataException;
+import com.iiht.training.blogs.service.BlogService;
+import com.iiht.training.blogs.service.CommentService;
+
+@RestController
+@RequestMapping("/api/blogs")
+public class BlogController {
+
+	@Autowired
+	private BlogService blogService;
+
+	@Autowired
+	private CommentService commentService;
+
+	@PostMapping
+    public ResponseEntity<BlogDto> createBlog(@RequestBody BlogDto blogDto) {
+        if (blogDto.getTitle().isEmpty() || blogDto.getContent().isEmpty()) {
+            throw new InvalidDataException("Title and content cannot be blank");
+        }
+        BlogDto createdBlog = blogService.createBlog(blogDto);
+        return new ResponseEntity<>(createdBlog, HttpStatus.CREATED);
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<BlogDto> getBlogById(@PathVariable("id") Long id) {
+        BlogDto blogDto = blogService.getBlogById(id);
+        if (blogDto == null) {
+            throw new BlogNotFoundException("Blog not found with ID: " + id);
+        }
+        return new ResponseEntity<>(blogDto, HttpStatus.OK);
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<BlogDto> updateBlog(@PathVariable("id") Long id, @RequestBody BlogDto blogDto) {
+        BlogDto updatedBlog = blogService.updateBlog(id, blogDto);
+        if (updatedBlog == null) {
+            throw new BlogNotFoundException("Blog not found with ID: " + id);
+        }
+        return new ResponseEntity<>(updatedBlog, HttpStatus.OK);
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Boolean> deleteBlog(@PathVariable("id") Long id) {
+        Boolean result = blogService.deleteBlog(id);
+        if (result == null || !result) {
+            throw new BlogNotFoundException("Blog not found with ID: " + id);
+        }
+        return new ResponseEntity<>(true, HttpStatus.OK);
+    }
+
+    @PostMapping("/comment")
+    public ResponseEntity<CommentDto> postComment(@RequestBody CommentDto commentDto) {
+        CommentDto createdComment = commentService.postComment(commentDto);
+        return new ResponseEntity<>(createdComment, HttpStatus.OK);
+    }
+
+    @ExceptionHandler(InvalidDataException.class)
+    public ResponseEntity<ExceptionResponse> handleInvalidDataException(InvalidDataException ex) {
+        ExceptionResponse exceptionResponse = new ExceptionResponse(ex.getMessage(), System.currentTimeMillis(),
+                HttpStatus.BAD_REQUEST.value());
+        return new ResponseEntity<>(exceptionResponse, HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(BlogNotFoundException.class)
+    public ResponseEntity<ExceptionResponse> handleBlogNotFoundException(BlogNotFoundException ex) {
+        ExceptionResponse exceptionResponse = new ExceptionResponse(ex.getMessage(), System.currentTimeMillis(),
+                HttpStatus.NOT_FOUND.value());
+        return new ResponseEntity<>(exceptionResponse, HttpStatus.NOT_FOUND);
+    }
+
+	
+}
